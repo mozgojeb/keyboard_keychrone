@@ -464,6 +464,10 @@ class TrayApp:
         while not self._window_requests.empty():
             kind, tab = self._window_requests.get_nowait()
             try:
+                if kind == "tray":
+                    from .tray_menu import show_tray_menu
+                    show_tray_menu(self, self._tk_root)
+                    continue
                 window = self._windows.get(kind)
                 if window is None or not window.winfo_exists():
                     if kind == "main":
@@ -602,7 +606,7 @@ class TrayApp:
             self._shutdown_log(f"failed to install shutdown handlers: {exc!r}")
 
     def _install_doubleclick_handler(self) -> None:
-        """Open Settings on a tray double-click.
+        """Open the custom menu on right-click and the app on double-click.
 
         pystray's cross-platform API only exposes a single 'default' action, but
         on Windows the shell still delivers WM_LBUTTONDBLCLK to the icon's
@@ -621,6 +625,9 @@ class TrayApp:
             def _on_notify(wparam, lparam):
                 if lparam == WM_LBUTTONDBLCLK:
                     self._open_main_window("device")
+                    return None
+                if lparam == _w32.WM_RBUTTONUP:
+                    self._window_requests.put(("tray", None))
                     return None
                 return base(wparam, lparam)
 
@@ -758,6 +765,8 @@ def _should_start_in_tray() -> bool:
 
 
 def main() -> None:
+    from .theme import enable_dpi_awareness
+    enable_dpi_awareness()
     if not single_instance.try_acquire():
         sys.exit(0)
     _install_crash_logging()
