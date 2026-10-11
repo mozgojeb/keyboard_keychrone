@@ -47,8 +47,36 @@ def round_window(window):
         pass
 
 
+def dark_titlebar(window):
+    """Use Windows' real, accessible title bar in dark mode."""
+    if not sys.platform.startswith("win"):
+        return
+    try:
+        user32 = ctypes.windll.user32
+        user32.GetAncestor.argtypes = (ctypes.c_void_p, ctypes.c_uint)
+        user32.GetAncestor.restype = ctypes.c_void_p
+        hwnd = user32.GetAncestor(window.winfo_id(), 2) or window.winfo_id()
+        enabled = ctypes.c_int(1)
+        dwm = ctypes.windll.dwmapi
+        dwm.DwmSetWindowAttribute.argtypes = (
+            ctypes.c_void_p, ctypes.c_uint, ctypes.c_void_p, ctypes.c_uint)
+        dwm.DwmSetWindowAttribute.restype = ctypes.c_long
+        for attribute in (20, 19):
+            if dwm.DwmSetWindowAttribute(hwnd, attribute, ctypes.byref(enabled),
+                                         ctypes.sizeof(enabled)) == 0:
+                break
+        caption = ctypes.c_uint(0x001C1511)
+        caption_text = ctypes.c_uint(0x00FFF7F4)
+        dwm.DwmSetWindowAttribute(hwnd, 35, ctypes.byref(caption),
+                                  ctypes.sizeof(caption))
+        dwm.DwmSetWindowAttribute(hwnd, 36, ctypes.byref(caption_text),
+                                  ctypes.sizeof(caption_text))
+    except (AttributeError, OSError, tk.TclError):
+        pass
+
+
 def present_window(window):
-    """Restore and activate a borderless Tk window from a tray action."""
+    """Restore and activate the normal app window from a tray action."""
     window.deiconify()
     window.lift()
     window.update_idletasks()
@@ -57,8 +85,6 @@ def present_window(window):
             user32 = ctypes.windll.user32
             hwnd = user32.GetParent(window.winfo_id()) or window.winfo_id()
             user32.ShowWindow(hwnd, 9)  # SW_RESTORE
-            user32.SetWindowPos(hwnd, ctypes.c_void_p(-1), 0, 0, 0, 0,
-                                0x0001 | 0x0002 | 0x0040)  # topmost, show
             user32.BringWindowToTop(hwnd)
             user32.SetForegroundWindow(hwnd)
         except (AttributeError, OSError, tk.TclError):
@@ -123,8 +149,9 @@ class ThemeButton(tk.Canvas):
 class ThemeSwitch(tk.Canvas):
     """Toggle with the cyan on state used in the EmblemaShot settings UI."""
 
-    def __init__(self, parent, variable):
+    def __init__(self, parent, variable, command=None):
         self.variable = variable
+        self.command = command
         super().__init__(parent, width=52, height=30, bg=parent.cget("bg"),
                          highlightthickness=0, borderwidth=0, cursor="hand2", takefocus=1)
         self.bind("<Button-1>", lambda _e: self._toggle())
@@ -136,6 +163,8 @@ class ThemeSwitch(tk.Canvas):
     def _toggle(self):
         self.variable.set(not self.variable.get())
         self.focus_set()
+        if self.command is not None:
+            self.command()
 
     def _paint(self):
         image = Image.new("RGB", (156, 90), self.cget("bg"))

@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import tkinter as tk
 from tkinter import ttk
+from PIL import Image, ImageDraw, ImageTk
 
 from . import APP_NAME, __version__, i18n
+from .config import Config
 from .settings_window import build_settings_panel
 from .lighting_editor import LightingEditor
 from .monitor_panel import MonitorPanel
 from .schedule_panel import SchedulePanel
 from .theme import BG, CYAN, HEADER, LINE, MUTED, NAV, PANEL, SELECTED, TEXT
-from .theme import ThemeButton, apply_theme, round_window
+from .theme import ThemeButton, ThemeSwitch, apply_theme, dark_titlebar
 
 TAB_IDS = ("device", "lighting", "settings", "firmware", "widget",
            "schedule", "monitor", "about")
@@ -22,15 +24,11 @@ def open_main_window(app, initial_tab: str = "settings", *, parent=None):
     apply_theme(root)
     root.title(APP_NAME)
     width = min(1460, max(900, root.winfo_screenwidth() - 100))
-    height = min(1040, max(720, root.winfo_screenheight() - 100))
+    height = min(1120, max(720, root.winfo_screenheight() - 100))
     x = max(0, (root.winfo_screenwidth() - width) // 2)
     y = max(0, (root.winfo_screenheight() - height) // 2)
     root.geometry(f"{width}x{height}+{x}+{y}")
-    root.overrideredirect(True)
-    try:
-        root.attributes("-topmost", True)
-    except tk.TclError:
-        pass
+    root.minsize(900, 700)
 
     border = tk.Frame(root, bg=BG, highlightbackground="#798491", highlightthickness=1)
     border.pack(fill="both", expand=True)
@@ -43,20 +41,7 @@ def open_main_window(app, initial_tab: str = "settings", *, parent=None):
     title = tk.Label(header, text=APP_NAME, bg=HEADER, fg=TEXT,
                      font=("Segoe UI", 12, "bold"))
     title.pack(side="left")
-    close = tk.Button(header, text="×", bg=HEADER, fg=TEXT,
-                      activebackground="#542b35", activeforeground=TEXT,
-                      font=("Segoe UI", 18), bd=0, highlightthickness=0,
-                      width=3, command=root.destroy)
-    close.pack(side="right", fill="y")
-    maximize = tk.Button(header, text="□", bg=HEADER, fg=MUTED,
-                         activebackground=PANEL, activeforeground=TEXT,
-                         font=("Segoe UI", 14), bd=0, highlightthickness=0, width=3)
-    maximize.pack(side="right", fill="y")
-    minimize = tk.Button(header, text="−", bg=HEADER, fg=MUTED,
-                         activebackground=PANEL, activeforeground=TEXT,
-                         font=("Segoe UI", 16), bd=0, highlightthickness=0, width=3)
-    minimize.pack(side="right", fill="y")
-    version = tk.Label(header, text=f"v{__version__} · EmblemaShot theme", bg=HEADER, fg=MUTED,
+    version = tk.Label(header, text=f"v{__version__}", bg=HEADER, fg=MUTED,
                        font=("Segoe UI", 9))
     version.pack(side="right", padx=15)
 
@@ -67,7 +52,7 @@ def open_main_window(app, initial_tab: str = "settings", *, parent=None):
     nav_items.pack(side="left", padx=12, pady=(9, 0))
     tk.Frame(border, bg=LINE, height=1).pack(fill="x")
     content = tk.Frame(border, bg=BG)
-    content.pack(fill="both", expand=True, padx=23, pady=20)
+    content.pack(fill="both", expand=True, padx=36, pady=28)
     content.grid_columnconfigure(0, weight=1)
     content.grid_rowconfigure(0, weight=1)
 
@@ -115,51 +100,7 @@ def open_main_window(app, initial_tab: str = "settings", *, parent=None):
     root.select_tab = select_tab
     select_tab(initial_tab)
 
-    drag = {}
-    def drag_start(event):
-        if getattr(root, "maximized", False):
-            return
-        drag["x"] = event.x_root - root.winfo_x()
-        drag["y"] = event.y_root - root.winfo_y()
-
-    def drag_move(event):
-        if "x" in drag and not getattr(root, "maximized", False):
-            root.geometry(f"+{event.x_root - drag['x']}+{event.y_root - drag['y']}")
-
-    for surface in (header, mark, title, version):
-        surface.bind("<ButtonPress-1>", drag_start)
-        surface.bind("<B1-Motion>", drag_move)
-
-    def minimize_window():
-        root.overrideredirect(False)
-        root.iconify()
-
-    def restore_from_minimize(event):
-        if event.widget is not root:
-            return
-        if root.state() == "normal":
-            root.overrideredirect(True)
-            root.after_idle(lambda: round_window(root))
-
-    def toggle_maximize():
-        if getattr(root, "maximized", False):
-            root.geometry(root.normal_geometry)
-            root.maximized = False
-            maximize.configure(text="□")
-        else:
-            root.normal_geometry = root.geometry()
-            work_width = root.winfo_screenwidth()
-            work_height = root.winfo_screenheight() - 48
-            root.geometry(f"{work_width}x{work_height}+0+0")
-            root.maximized = True
-            maximize.configure(text="❐")
-        root.after_idle(lambda: round_window(root))
-
-    minimize.configure(command=minimize_window)
-    maximize.configure(command=toggle_maximize)
-    root.bind("<Map>", restore_from_minimize, add="+")
-    root.bind("<Alt-F4>", lambda _e: root.destroy())
-    root.after_idle(lambda: round_window(root))
+    root.after(150, lambda: dark_titlebar(root))
     root.update_idletasks()
     if parent is None:
         root.mainloop()
@@ -184,18 +125,32 @@ def _build_device_tab(parent, app):
         ("battery", "Battery level"), ("connection", "Connection"),
         ("mode", "Charging"),
     )):
-        card = tk.Frame(frame, bg=PANEL, highlightbackground="#344252",
-                        highlightthickness=1, height=112)
+        card = tk.Canvas(frame, bg=BG, height=122, highlightthickness=0,
+                         borderwidth=0)
         card.grid(row=3, column=col, sticky="ew",
                   padx=(0, 13) if col < 2 else 0)
-        card.grid_propagate(False)
-        tk.Label(card, text=label, bg=PANEL, fg=MUTED,
-                 font=("Segoe UI", 9)).pack(anchor="w", padx=20, pady=(17, 0))
-        value = tk.Label(card, text="--", bg=PANEL,
-                         fg=CYAN if key == "battery" else TEXT,
-                         font=("Segoe UI", 23, "bold"))
-        value.pack(anchor="w", padx=20, pady=(5, 0))
-        cards[key] = value
+        card.create_text(21, 25, text=label, anchor="w", fill=MUTED,
+                         font=("Segoe UI", 9))
+        value = card.create_text(21, 79, text="--", anchor="w",
+                                 fill=CYAN if key == "battery" else TEXT,
+                                 font=("Segoe UI", 23, "bold"))
+        def repaint(event, surface=card):
+            width, height = max(1,event.width), max(1,event.height)
+            image = Image.new("RGB", (width*3,height*3), BG)
+            pen = ImageDraw.Draw(image)
+            pen.rounded_rectangle((2,2,width*3-3,height*3-3),
+                                  radius=13*3, fill=PANEL,
+                                  outline="#344252", width=2)
+            surface._card_photo = ImageTk.PhotoImage(
+                image.resize((width,height),Image.Resampling.LANCZOS))
+            if not surface.find_withtag("card_surface"):
+                surface.create_image(0,0,anchor="nw",image=surface._card_photo,
+                                     tags="card_surface")
+                surface.tag_lower("card_surface")
+            else:
+                surface.itemconfigure("card_surface",image=surface._card_photo)
+        card.bind("<Configure>", repaint)
+        cards[key] = (card,value)
 
     tk.Label(frame, text="Device details", bg=BG, fg=TEXT,
              font=("Segoe UI", 12, "bold")).grid(
@@ -253,7 +208,7 @@ def _build_device_tab(parent, app):
             if key in values:
                 values[key].config(text=fmt(val))
             if key in cards:
-                cards[key].config(text=fmt(val))
+                cards[key][0].itemconfigure(cards[key][1], text=fmt(val))
         try:
             frame.after(1000, refresh)
         except tk.TclError:
@@ -271,23 +226,79 @@ def _build_widget_tab(parent, app):
              font=("Segoe UI", 23, "bold")).pack(anchor="w")
     tk.Label(frame, text="The desktop widget shares the palette with the app.",
              bg=BG, fg=MUTED, font=("Segoe UI", 11)).pack(anchor="w", pady=(4, 28))
-    card = tk.Frame(frame, bg=BG, highlightbackground="#798491",
-                    highlightthickness=1, width=280, height=145)
+    card_width, card_height = 390, 190
+    card = tk.Canvas(frame, width=card_width, height=card_height,
+                     bg=BG, highlightthickness=0, borderwidth=0)
     card.pack(anchor="w")
-    card.pack_propagate(False)
-    tk.Label(card, text="KEYBOARD COMPANION", bg=BG, fg=CYAN,
-             font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=18, pady=(15, 4))
-    percent = tk.Label(card, text="--", bg=BG, fg=TEXT,
-                       font=("Segoe UI", 27, "bold"))
-    percent.pack(anchor="w", padx=18)
-    status = tk.Label(card, text=i18n.t("undetected"), bg=BG, fg=MUTED,
-                      font=("Segoe UI", 9))
-    status.pack(anchor="w", padx=18, pady=(2, 0))
+    image = Image.new("RGB", (card_width*3, card_height*3), BG)
+    pen = ImageDraw.Draw(image)
+    pen.rounded_rectangle((2, 2, card_width*3-3, card_height*3-3),
+                          radius=19*3, fill=BG, outline="#798491", width=2)
+    card._background = ImageTk.PhotoImage(
+        image.resize((card_width, card_height), Image.Resampling.LANCZOS))
+    card.create_image(0, 0, image=card._background, anchor="nw")
+    device = card.create_text(24, 26, text="KEYBOARD COMPANION",
+                              anchor="w", fill=CYAN, font=("Segoe UI", 9, "bold"))
+    card.create_text(card_width-24, 26, text="×", anchor="e",
+                     fill=MUTED, font=("Segoe UI", 16))
+    percent = card.create_text(24, 96, text="--", anchor="w",
+                               fill=TEXT, font=("Segoe UI", 34, "bold"))
+    card.create_rectangle(271, 79, 360, 119, outline=MUTED, width=2)
+    card.create_rectangle(361, 91, 368, 107, fill=MUTED, outline=MUTED)
+    battery_fill = card.create_rectangle(276, 84, 276, 114, fill=CYAN, outline="")
+    status = card.create_text(24, 155, text=i18n.t("undetected"),
+                              anchor="w", fill=MUTED, font=("Segoe UI", 10))
+
+    switch_row = tk.Frame(frame, bg=BG, width=390, height=96)
+    switch_row.pack(anchor="w", pady=(26, 0))
+    switch_row.pack_propagate(False)
+    switch_row.grid_columnconfigure(0, weight=1)
+    tk.Frame(switch_row, bg=LINE, height=1).grid(row=0, column=0, columnspan=2,
+                                                  sticky="ew", pady=(0, 15))
+    tk.Label(switch_row, text="Show on desktop", bg=BG, fg=TEXT,
+             font=("Segoe UI", 11, "bold")).grid(row=1, column=0, sticky="w")
+    hint = tk.Label(switch_row, text="Keep battery status visible while you work.",
+                    bg=BG, fg=MUTED, font=("Segoe UI", 9))
+    hint.grid(row=2, column=0, sticky="w", pady=(4, 0))
+    widget_var = tk.BooleanVar(value=bool(app.config.get("widget_enabled")))
+
+    def toggle_widget():
+        enabled = bool(widget_var.get())
+        if not app.set_widget_enabled(enabled):
+            widget_var.set(False)
+            hint.config(text="Widget could not be opened. Check the installation.")
+        else:
+            hint.config(text="Keep battery status visible while you work." if enabled
+                        else "Desktop widget is off.")
+
+    ThemeSwitch(switch_row, widget_var, command=toggle_widget).grid(
+        row=1, column=1, rowspan=2, sticky="e", padx=(18, 0))
 
     def refresh():
+        saved_enabled = bool(Config.load().get("widget_enabled"))
+        if saved_enabled != bool(widget_var.get()):
+            app.config["widget_enabled"] = saved_enabled
+            widget_var.set(saved_enabled)
+            hint.config(text="Keep battery status visible while you work." if saved_enabled
+                        else "Desktop widget is off.")
         reading, pct = app._snapshot()
-        percent.config(text=f"{pct}%" if pct is not None else "--")
-        status.config(text=reading.transport_name if reading else i18n.t("undetected"))
+        card.itemconfigure(percent, text=f"{pct}%" if pct is not None else "--")
+        card.itemconfigure(device, text=(getattr(app, "_device_label", None) or
+                                         "KEYBOARD COMPANION").upper())
+        if pct is not None:
+            fill = max(0, min(100, int(pct)))
+            card.coords(battery_fill, 276, 84, 276 + round(fill * 0.78), 114)
+        else:
+            card.coords(battery_fill, 276, 84, 276, 114)
+        if reading:
+            parts = [reading.transport_name]
+            if reading.source != "windows":
+                parts.insert(0, i18n.t(f"charging_{reading.charging_code}"))
+                if reading.voltage_mv > 0:
+                    parts.append(f"{reading.voltage_mv:,} mV")
+            card.itemconfigure(status, text="  •  ".join(parts))
+        else:
+            card.itemconfigure(status, text=i18n.t("undetected"))
         try:
             frame.after(1500, refresh)
         except tk.TclError:

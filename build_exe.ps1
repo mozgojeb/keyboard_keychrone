@@ -69,6 +69,7 @@ $ErrorActionPreference = "Continue"
     --hidden-import tkinter.messagebox `
     --hidden-import tkinter.filedialog `
     --add-binary "vendor\qmk_flashutils\dfu-util.exe;." `
+    --add-data "KeyboardBatteryWidget.ps1;." `
     run_tray.py
 
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path $AppExe)) {

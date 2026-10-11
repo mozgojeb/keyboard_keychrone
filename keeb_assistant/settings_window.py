@@ -35,14 +35,14 @@ def build_settings_panel(parent, app, *, on_close=None, title_callback=None):
     body.grid_columnconfigure(0, weight=1)
 
     def row(index, description, control_factory):
-        holder = tk.Frame(body, bg=BG, height=68)
+        holder = tk.Frame(body, bg=BG, height=92)
         holder.grid(row=index * 2, column=0, sticky="ew")
         holder.grid_propagate(False)
         holder.grid_columnconfigure(0, weight=1)
         label = tk.Label(holder, bg=BG, fg=TEXT, font=("Segoe UI", 11, "bold"))
-        label.grid(row=0, column=0, sticky="w", pady=(8, 0))
+        label.grid(row=0, column=0, sticky="w", pady=(16, 0))
         tk.Label(holder, text=description, bg=BG, fg=MUTED,
-                 font=("Segoe UI", 9)).grid(row=1, column=0, sticky="w")
+                 font=("Segoe UI", 9)).grid(row=1, column=0, sticky="w", pady=(3, 0))
         control = control_factory(holder)
         control.grid(row=0, column=1, rowspan=2, sticky="e", padx=(20, 0))
         tk.Frame(body, bg=LINE, height=1).grid(row=index * 2 + 1, column=0, sticky="ew")
@@ -63,7 +63,7 @@ def build_settings_panel(parent, app, *, on_close=None, title_callback=None):
     combo.bind("<<ComboboxSelected>>", on_language_changed)
     lbl_notify, _ = row(1, "Show a notification when the battery runs low.",
                         lambda holder: ThemeSwitch(holder, notify_var))
-    lbl_logging, _ = row(2, "Keep the desktop widget up to date.",
+    lbl_logging, _ = row(2, "Save detailed battery readings for diagnostics.",
                          lambda holder: ThemeSwitch(holder, logging_var))
     lbl_autostart, _ = row(3, "Launch Keyboard Companion at sign-in.",
                            lambda holder: ThemeSwitch(holder, autostart_var))
@@ -78,15 +78,15 @@ def build_settings_panel(parent, app, *, on_close=None, title_callback=None):
              font=("Segoe UI", 9, "bold")).grid(
                  row=1, column=0, columnspan=4, sticky="w", pady=(0, 8))
     lbl_threshold = tk.Label(advanced, bg=BG, fg=TEXT)
-    lbl_threshold.grid(row=2, column=0, sticky="w", padx=(0, 15), pady=3)
+    lbl_threshold.grid(row=2, column=0, sticky="w", padx=(0, 15), pady=8)
     ttk.Spinbox(advanced, from_=1, to=99, textvariable=threshold_var,
-                width=6).grid(row=2, column=1, sticky="w", pady=3)
+                width=6).grid(row=2, column=1, sticky="w", pady=8)
     lbl_smoothing = tk.Label(advanced, bg=BG, fg=TEXT)
-    lbl_smoothing.grid(row=3, column=0, sticky="w", pady=3)
+    lbl_smoothing.grid(row=3, column=0, sticky="w", pady=8)
     ttk.Scale(advanced, from_=0.05, to=1.0, variable=alpha_var,
-              orient="horizontal", length=160).grid(row=3, column=1, sticky="w", pady=3)
+              orient="horizontal", length=160).grid(row=3, column=1, sticky="w", pady=8)
     correction = ttk.Checkbutton(advanced, variable=correction_var)
-    correction.grid(row=4, column=0, columnspan=3, sticky="w", pady=3)
+    correction.grid(row=4, column=0, columnspan=3, sticky="w", pady=8)
     btn_log = ttk.Button(advanced, command=battery_log.open_location)
     btn_log.grid(row=5, column=0, sticky="w", pady=(9, 0), padx=(0, 8))
     btn_clean = ttk.Button(advanced)

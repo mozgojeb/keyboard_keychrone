@@ -5,9 +5,11 @@ import re
 import threading
 import tkinter as tk
 from tkinter import colorchooser, messagebox, ttk
+from tkinter import font as tkfont
 
 from .keyboard_layout import KEYS
 from .lighting_profiles import EFFECTS, KEYPRESS_EFFECTS, load_profiles, normalize_profile, save_profiles
+from .theme import CYAN, PANEL, SELECTED, TEXT
 
 
 def section_keys(section):
@@ -61,7 +63,7 @@ class LightingEditor(ttk.Frame):
         for section in ('All','Typing','F-row','Numpad','Navigation','Arrows','WASD','Clear'):
             ttk.Button(sections, text=section, width=10 if section == 'Navigation' else 7,
                        command=lambda name=section: self.select_section(name)).pack(side='left', padx=(0,3))
-        self.canvas = tk.Canvas(editor, height=275, background='#141923', highlightthickness=0)
+        self.canvas = tk.Canvas(editor, height=275, background=PANEL, highlightthickness=0)
         self.canvas.grid(row=3, sticky='ew')
         self.canvas.bind('<Configure>', lambda event: self.redraw())
         self.canvas.bind('<ButtonPress-1>', self.press)
@@ -146,21 +148,49 @@ class LightingEditor(ttk.Frame):
         width = max(self.canvas.winfo_width(), 600)
         unit = (width-20)/22.5
         self.canvas.configure(height=round(unit*6.25+20))
+        font_cache = {}
         for key in KEYS:
             led = key['led']
             x, y = 10+key['x']*unit, 10+key['y']*unit
-            box = (x+2,y+2,x+key['w']*unit-2,y+key['h']*unit-2)
+            box = (x+3,y+3,x+key['w']*unit-3,y+key['h']*unit-3)
             self.boxes[led] = box
             color = self.colors.get(str(led), '#18D9FF')
-            self.canvas.create_rectangle(*box, fill=color, outline='#FFB547' if led in self.selected else '#3A4354',
-                                         width=3 if led in self.selected else 1)
-            channels = [int(color[i:i+2],16) for i in (1,3,5)]
-            ink = '#10151D' if sum(a*b for a,b in zip(channels,(.299,.587,.114))) > 140 else '#FFFFFF'
-            label = key['label']
-            if unit < 36:
-                label = {'Backspace':'Bksp','Enter':'Ent','Shift':'Shft','Pause':'Paus'}.get(label,label)
-            self.canvas.create_text((box[0]+box[2])/2,(box[1]+box[3])/2, text=label,
-                                    fill=ink, font=('Segoe UI',max(7,round(unit*.22))))
+            x1, y1, x2, y2 = box
+            radius = min(6, (x2-x1)/6, (y2-y1)/6)
+            self.canvas.create_polygon(
+                x1+radius,y1, x2-radius,y1, x2,y1+radius,
+                x2,y2-radius, x2-radius,y2, x1+radius,y2,
+                x1,y2-radius, x1,y1+radius,
+                smooth=True, splinesteps=12,
+                fill=SELECTED if led in self.selected else '#1b2430',
+                outline=CYAN if led in self.selected else '#465264',
+                width=2 if led in self.selected else 1)
+            self.canvas.create_line(x1+7,y2-5,x2-7,y2-5,fill=color,
+                                    width=3,capstyle=tk.ROUND)
+            label = {
+                'Backspace':'Bksp', 'PageUp':'PgUp', 'PageDown':'PgDn',
+                'PrtSc':'Prt', 'ScrLk':'Scr', 'Pause':'Paus',
+                'Insert':'Ins', 'Delete':'Del',
+            }.get(key['label'],key['label'])
+            available = max(12, x2-x1-8)
+            size = min(16,max(10,round(unit*.29)))
+            while size > 9:
+                if size not in font_cache:
+                    font_cache[size] = tkfont.Font(family='Segoe UI',size=-size)
+                face = font_cache[size]
+                if face.measure(label) <= available:
+                    break
+                size -= 1
+            if size not in font_cache:
+                font_cache[size] = tkfont.Font(family='Segoe UI',size=-size)
+            face = font_cache[size]
+            if face.measure(label) > available:
+                while len(label)>1 and face.measure(label+'…')>available:
+                    label=label[:-1]
+                label+='…'
+            self.canvas.create_text((x1+x2)/2,(y1+y2)/2-2,text=label,
+                                    fill=TEXT,font=face)
+        self._key_fonts = font_cache
         self.selection_text.set(f'{len(self.selected)} keys selected' if self.selected else 'No keys selected')
 
     def press(self, event):

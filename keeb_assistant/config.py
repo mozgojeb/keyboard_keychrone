@@ -20,6 +20,7 @@ DEFAULTS = {
     # default; used to gather real voltage/charging data for the charging-%
     # correction. Does not affect anything displayed.
     "battery_logging": False,
+    "widget_enabled": False,
     # While charging, compensate the inflated terminal voltage so the shown %
     # tracks the true resting state of charge. offset_mv is the voltage we
     # subtract before mapping to % (empirical; refine from logged CSV data).

@@ -19,6 +19,7 @@ from . import APP_ID, APP_NAME, autostart, battery_log, battery_model, ble_reade
 from . import hid_reader, firmware_flash
 from . import lighting_hid
 from . import single_instance
+from . import widget_control
 from .config import Config
 from .hid_reader import BatteryReader, BatteryReading
 from .icon import make_icon
@@ -310,7 +311,7 @@ class TrayApp:
         # and only does real work when the transport/model actually changes.
         if not self._shutdown_fast:
             self._update_device_label(reading)
-        if self.config.get("battery_logging") and not self._shutdown_fast:
+        if (self.config.get("battery_logging") or self.config.get("widget_enabled")) and not self._shutdown_fast:
             battery_log.append(
                 source=reading.source,
                 transport=reading.transport_name,
@@ -423,6 +424,17 @@ class TrayApp:
         self.smoother.deadband = max(0.0, float(self.config["smoothing_deadband"]))
         self.config.save()
         self._refresh_ui()
+
+    def set_widget_enabled(self, enabled: bool) -> bool:
+        """Apply the widget switch immediately and remember it for next launch."""
+        enabled = bool(enabled)
+        self.config["widget_enabled"] = enabled
+        self.config.save()
+        if enabled and not widget_control.show_widget():
+            self.config["widget_enabled"] = False
+            self.config.save()
+            return False
+        return True
 
     def apply_lighting_profile(self, profile: dict) -> int:
         """Write one lighting profile through the reader-owned HID connection."""
@@ -636,6 +648,8 @@ class TrayApp:
 
     def _setup(self, icon) -> None:
         icon.visible = True
+        if self.config["widget_enabled"]:
+            widget_control.show_widget()
         self._install_doubleclick_handler()
         self._install_windows_session_handlers()
         self.reader.start()
