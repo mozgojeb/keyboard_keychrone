@@ -1,0 +1,8 @@
+dfu-util.exe source: QMK Flashing Utilities release 20260711
+https://github.com/qmk/qmk_flashutils/releases/tag/20260711
+
+Archive: qmk_flashutils-20260711-windowsX64.tar.zst
+SHA-256: cfb2bfe80700c2b14747416545a8326de5df780928a175f9836ca01b427d985c
+
+dfu-util is licensed under GPL-2.0. Keyboard Companion's GPL-2.0 license is
+included at the project root.

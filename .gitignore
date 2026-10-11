@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.build-deps/
+
+# PyInstaller build output (the .exe is shipped via GitHub Releases, not git)
+build/
+dist/
+dist*/
+*.spec
+
+# Generated preview (regenerate with preview_icon.py)
+/icon_preview.png
+
+# OS / editor cruft
+Thumbs.db
+.DS_Store
