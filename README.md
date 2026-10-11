@@ -30,29 +30,37 @@ options; and it's designed to grow beyond battery monitoring over time.
 > refers to it being a companion app for your keyboard.
 > The name is configurable in `keeb_assistant/__init__.py` (`APP_NAME`, `APP_ID`).
 
-## Previews (software GUI may change)
+## Current interface
 
-Battery glyph previews with the percentage below:
+Screenshots of the Windows app's current dark design. Battery values and the
+connected device shown here are examples from one keyboard.
+
+### Device status
+
+![Device tab with rounded battery, connection, and charging cards](assets/screenshots/device.jpg)
+
+### Per-key lighting
+
+![Lighting tab with the dark keyboard layout and per-key colour indicators](assets/screenshots/lighting.jpg)
+
+### Settings
+
+![Settings tab with language, notifications, logging, and startup controls](assets/screenshots/settings.jpg)
+
+### Battery widget
+
+![Battery widget tab with live preview and Show on desktop switch](assets/screenshots/battery-widget.jpg)
+
+The **Show on desktop** switch opens or closes the separate desktop widget and
+remembers the choice for the next launch. Closing the widget with its **×** button
+also turns it off.
+
+The tray icon still shows battery state at a glance:
 
 ![Tray icon states](assets/preview.png)
 
-Tray icon and tooltip screenshot on 2.4 GHz dongle:
-
-<p><img width="327" height="311" alt="Tooltip" src="https://github.com/user-attachments/assets/86612c5c-6b0d-4da9-a20e-32b57af2aabd" /></p>
-
-App Settings:
-
-<p><img width="500" height="480" alt="settings window" src="https://github.com/user-attachments/assets/d47890b5-6b17-4989-9f31-3f59c31311e4" /></p>
-
-Flash firmware (USB connection):
-
-<img width="450" height="350" alt="Flash" src="https://github.com/user-attachments/assets/916df15f-2669-4018-a247-e8e5a4b8dbfc" />
-
-
 ## Features
 
-> Per-version changes are on the
-> [**Releases**](https://github.com/OutersGIT/keyboard-companion/releases) page.
 - Tray icon with the **battery percentage** and color by level (green/amber/red).
 - Tooltip with the **connected keyboard's name** (when available), **%, voltage,
   charging state, link type**.
@@ -74,12 +82,13 @@ Flash firmware (USB connection):
   default; never affects what is displayed.
 - **Multi-language UI**: English / Italian / 中文, switchable at runtime and easy
   to extend (see `i18n.py`).
-- **Settings window** (language, threshold, notifications, smoothing, charging
+- **Settings tab** (language, threshold, notifications, smoothing, charging
   correction, logging, autostart).
-- **Main multi-tab window**: the app now opens a single Keyboard Companion
-  window with Device, Lighting, Firmware, Settings, and About tabs. Device shows the
-  currently connected keyboard details in a table; Firmware currently launches
-  the dedicated flash wizard while that workflow is migrated in-place.
+- **Main multi-tab window**: Device, Lighting, Settings, Firmware, Battery widget,
+  Schedule, Monitor, and About. Device shows live battery and connection cards;
+  Lighting includes a per-key editor; the Monitor tab configures source shortcuts.
+- **Optional desktop battery widget** with a live preview and an on/off switch in
+  the Battery widget tab. It uses the same dark palette and remembers its state.
 - **Lighting profiles**: create, duplicate, delete, save, and switch RGB profiles.
   Applying a profile writes its effect, primary/accent colors, and brightness to
   every addressable LED through Keychron's RGB raw-HID protocol, then saves it to
@@ -110,14 +119,17 @@ Flash firmware (USB connection):
   **[k10he-battery-firmware](https://github.com/OutersGIT/k10he-battery-firmware)**.
   Without that firmware there is no HID battery data over cable/dongle; the
   Bluetooth reading still works, since it mirrors what Windows already exposes.
-- Python 3.9+ (only to run from source or to build the exe).
+- Python 3.10+ (only to run from source or to build the exe; Windows builds are
+  tested with Python 3.13).
 
 ## Download (Windows)
 
-Grab the latest versioned **`KeyboardCompanion-vX.Y.Z-win64.zip`** from the
-[**Releases**](https://github.com/OutersGIT/keyboard-companion/releases)
-page, extract it to a folder you keep (e.g. `C:\Tools\KeyboardCompanion\`),
-then run **`KeyboardCompanion.exe`** inside that folder. The tray icon appears;
+If a packaged build is available on the
+[**Releases**](https://github.com/mozgojeb/keyboard_keychrone/releases)
+page, download **`KeyboardCompanion-vX.Y.Z-win64.zip`** and extract it to a
+folder you keep (e.g. `C:\Tools\KeyboardCompanion\`). Otherwise, use
+[Build for Windows](#build-for-windows). Run **`KeyboardCompanion.exe`** inside
+the extracted or built folder. The tray icon appears;
 right-click it for the menu, or double-click the icon to open the main app window.
 
 Keep the **whole extracted folder** together: do not move or delete the DLLs
@@ -141,7 +153,6 @@ Devs can run from source or rebuild -> see
 
 ## Run from source
 ```powershell
-cd keeb_assistant
 pip install -r requirements.txt
 python -m keeb_assistant            # launch the tray app
 python -m keeb_assistant --start-in-tray  # launch tray-only, without opening the window
@@ -157,13 +168,14 @@ No Python needed on the target PC. Extract the zip (or copy the folder), run
 
 ## Interface and battery widget
 
-The main window, settings, and firmware wizard use the EmblemaShot dark palette.
-`keeb_assistant/theme.py` holds their shared Tk colours and control styling.
+The main window, tray menu, and desktop widget use a dark palette with cyan
+active controls. `keeb_assistant/theme.py` holds the shared Tk styling.
 
-`KeyboardBatteryWidget.ps1` is the optional matching desktop widget. It reads
-`%APPDATA%\KeyboardCompanion\battery_log.csv`; enable **Battery logging** in
-Settings first. `LaunchKeyboardBatteryWidget.vbs` starts the widget without a
-console window. Keep both files together and run the launcher to show it.
+Open **Battery widget** and use **Show on desktop** to control the separate
+Windows widget. The app records the battery readings it needs while the widget
+is enabled; the **Battery logging** setting remains an optional diagnostic log.
+The packaged app includes `KeyboardBatteryWidget.ps1`, so no separate launcher
+is needed for this switch.
 
 ## Autostart (optional)
 Off by default. Toggle it from the tray menu or the settings window. It adds or
@@ -187,6 +199,7 @@ JSON file at `%APPDATA%\KeyboardCompanion\config.json` (created on first run):
 - `charge_offset_mv` (base mV subtracted from the charging voltage before mapping
   to %; the app ramps this upward at high charge based on logged data)
 - `battery_logging` (true/false — opt-in CSV diagnostics in `%APPDATA%`)
+- `widget_enabled` (true/false — show the desktop battery widget)
 
 ## Add a language
 Edit `keeb_assistant/i18n.py`: add a dict to `TRANSLATIONS` and an entry to
@@ -194,7 +207,7 @@ Edit `keeb_assistant/i18n.py`: add a dict to `TRANSLATIONS` and an entry to
 
 ## Project layout
 ```
-keeb_assistant/
+.
   keeb_assistant/
     hid_reader.py       # unified HID read (dongle push + cable pull)
     ble_reader.py       # Bluetooth battery mirror (Windows PnP property)
@@ -210,10 +223,13 @@ keeb_assistant/
     flash_window.py     # flash wizard (Tk)
     main_window.py      # main multi-tab app window
     settings_window.py  # Tk settings window
+    widget_control.py   # desktop widget launcher
     tray_registry.py    # Windows tray icon registry tools
     tray_app.py         # tray app (pystray)
     __main__.py         # entry + CLI flags
   run_tray.py           # entry for running/packaging
   build_exe.ps1         # PyInstaller build
+  KeyboardBatteryWidget.ps1  # Windows desktop widget
+  assets/screenshots/   # current interface images used above
   requirements.txt
 ```
