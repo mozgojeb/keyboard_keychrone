@@ -4,13 +4,39 @@ import queue
 import threading
 import tkinter as tk
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from keeb_assistant.config import Config
 from keeb_assistant.tray_app import TrayApp
+from keeb_assistant.tray_menu import show_tray_menu
 
 
 class WindowLifecycleTest(unittest.TestCase):
+    def test_tray_settings_click_requests_main_window(self):
+        app = TrayApp.__new__(TrayApp)
+        app.config = Config()
+        app.icon = Mock()
+        app._stop = threading.Event()
+        app._window_requests = queue.Queue()
+        app._windows = {}
+        app._snapshot = lambda: (None, None)
+        app._tk_root = tk.Tk()
+        app._tk_root.withdraw()
+        try:
+            popup = show_tray_menu(app, app._tk_root)
+            app._tk_root.update()
+            panel = popup.winfo_children()[0]
+            rows = [child for child in panel.winfo_children()
+                    if child.winfo_class() == "Frame"]
+            # The first row is the heading and the next actionable rows are
+            # Lighting and Settings.
+            rows[3].winfo_children()[1].event_generate("<Button-1>")
+            app._tk_root.update()
+            self.assertEqual(app._window_requests.get_nowait(), ("main", "settings"))
+        finally:
+            app._windows.clear()
+            app._tk_root.destroy()
+
     def test_worker_requests_reuse_and_reopen_main_thread_windows(self):
         app = TrayApp.__new__(TrayApp)
         app.config = Config()

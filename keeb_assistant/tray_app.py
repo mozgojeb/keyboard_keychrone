@@ -479,9 +479,8 @@ class TrayApp:
                     self._windows[kind] = window
                 elif kind == "main":
                     window.select_tab(tab)
-                window.deiconify()
-                window.lift()
-                window.focus_force()
+                from .theme import present_window
+                present_window(window)
             except Exception:
                 sys.excepthook(*sys.exc_info())
         self._tk_root.after(100, self._drain_window_requests)

@@ -47,6 +47,25 @@ def round_window(window):
         pass
 
 
+def present_window(window):
+    """Restore and activate a borderless Tk window from a tray action."""
+    window.deiconify()
+    window.lift()
+    window.update_idletasks()
+    if sys.platform.startswith("win"):
+        try:
+            user32 = ctypes.windll.user32
+            hwnd = user32.GetParent(window.winfo_id()) or window.winfo_id()
+            user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+            user32.SetWindowPos(hwnd, ctypes.c_void_p(-1), 0, 0, 0, 0,
+                                0x0001 | 0x0002 | 0x0040)  # topmost, show
+            user32.BringWindowToTop(hwnd)
+            user32.SetForegroundWindow(hwnd)
+        except (AttributeError, OSError, tk.TclError):
+            pass
+    window.focus_force()
+
+
 class ThemeButton(tk.Canvas):
     """Antialiased, keyboard-accessible button for the app shell and actions."""
 
